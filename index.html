@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Бюджет</title>
+<meta name="description" content="Личный бюджет по периодам: текучка с лимитами, обязательные платежи, голосовой ввод.">
+<meta name="theme-color" content="#F5F4F0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121413" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon-64.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app" class="app"></div>
+<div id="sheet-root"></div>
+<div id="toast-root" class="toast-root" aria-live="polite"></div>
+<input id="import-file" type="file" accept="application/json,.json" hidden>
+<noscript>Для работы приложения нужен JavaScript.</noscript>
+<script src="logic.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
