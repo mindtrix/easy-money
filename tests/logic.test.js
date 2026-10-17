@@ -100,5 +100,34 @@ eq(L.periodLabel({ start: '2026-09-30', end: '2026-10-14' }), '30 сен – 14 
   eq(!!p('').error, true, 'пусто — ошибка');
 })();
 
+// категории: названия, порядок, удаление
+(function () {
+  const s = L.seedState();
+  L.rollPeriods(s, D(2026, 10, 17));
+  eq(L.categoryNameTaken(s.categories, '  еда И Продукты ', null), true, 'дубль названия без учёта регистра и пробелов');
+  eq(L.categoryNameTaken(s.categories, 'Еда и продукты', 'food'), false, 'своё название — не дубль');
+  eq(L.categoryNameTaken(s.categories, 'Такси', null), false, 'новое название свободно');
+
+  eq(L.moveCategory(s, 'food', -1), false, 'первую выше не сдвинуть');
+  eq(L.moveCategory(s, 'city', -1), true, 'сдвиг вверх');
+  eq(s.categories.map(c => c.id).slice(0, 2), ['city', 'food'], 'порядок после сдвига вверх');
+  eq(L.moveCategory(s, 'other', 1), false, 'последнюю ниже не сдвинуть');
+  eq(L.moveCategory(s, 'nope', 1), false, 'несуществующую не сдвинуть');
+
+  s.current.limits = { food: 100000, self: 50000 };
+  s.templates.salary.limits = { self: 50000 };
+  s.templates.advance.limits = { self: 40000 };
+  s.current.ops.push({ id: 'o1', ts: 1, cat: 'self', amount: 1000 }, { id: 'o2', ts: 2, cat: 'self', amount: 2000 }, { id: 'o3', ts: 3, cat: 'food', amount: 500 });
+  eq(L.removeCategory(s, 'self', null), null, 'с тратами без переноса не удаляется');
+  eq(s.categories.some(c => c.id === 'self'), true, 'категория на месте после отказа');
+  eq(L.removeCategory(s, 'self', 'self'), null, 'перенос в саму себя не принимается');
+  eq(L.removeCategory(s, 'self', 'home'), 2, 'перенесены две траты');
+  eq(s.current.ops.map(o => o.cat), ['home', 'home', 'food'], 'траты в новой категории');
+  eq([s.current.limits.self, s.templates.salary.limits.self, s.templates.advance.limits.self], [undefined, undefined, undefined], 'лимиты удалены везде');
+  eq(s.current.limits.food, 100000, 'чужие лимиты не тронуты');
+  eq(s.categories.some(c => c.id === 'self'), false, 'категория удалена');
+  eq(L.removeCategory(s, 'other', null), 0, 'пустая удаляется без переноса');
+})();
+
 console.log((failed ? '✗ ' : '✓ ') + passed + ' прошло, ' + failed + ' упало');
 process.exit(failed ? 1 : 0);

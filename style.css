@@ -112,7 +112,7 @@ svg { flex: none; }
 
 .screen { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
 .scroll { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 4px 16px 24px; display: flex; flex-direction: column; gap: 10px; }
-.screen-tek .scroll { padding-bottom: 104px; }
+.screen-tek .scroll { padding-bottom: calc(176px + env(safe-area-inset-bottom, 0px)); }
 
 /* ---------- «Текучка» ---------- */
 .hero { display: flex; flex-direction: column; gap: 4px; padding: 6px 4px 8px; }
@@ -124,7 +124,9 @@ svg { flex: none; }
 .hero-num.neg { color: var(--bad-ink); }
 .hero-sub { font-size: 13px; color: var(--muted); }
 
-.list-head { display: flex; justify-content: space-between; padding: 6px 4px 0; font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; }
+.list-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 44px; padding: 4px 4px 0; font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; }
+.lh-left { display: inline-flex; align-items: center; gap: 10px; }
+.lh-btn { min-height: 36px; padding: 0 12px; border-radius: 18px; background: var(--accent-soft); color: var(--accent); font-size: 13px; font-weight: 800; letter-spacing: 0; text-transform: none; display: inline-flex; align-items: center; gap: 6px; }
 
 .card-wrap { position: relative; }
 .cat-card { width: 100%; background: var(--surface); border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 9px; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 18%, transparent), var(--shadow); }
@@ -139,6 +141,7 @@ svg { flex: none; }
 .bar { display: block; width: 100%; height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; }
 .bar > span { display: block; height: 100%; border-radius: 3px; }
 .cat-sub { display: flex; align-items: center; min-height: 34px; width: 100%; padding-right: 104px; font-size: 12px; color: var(--muted); }
+.add-cat { width: 100%; min-height: 56px; border-radius: 16px; border: 1.5px dashed color-mix(in srgb, var(--accent) 40%, transparent); color: var(--accent); font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .limit-btn { position: absolute; right: 10px; bottom: 10px; min-height: 40px; padding: 0 14px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); color: var(--muted); font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 6px; }
 
 .hint-card { background: var(--accent-soft); color: var(--ink); border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
@@ -226,6 +229,8 @@ svg { flex: none; }
 .sheet-scrim { position: absolute; inset: 0; background: var(--scrim); }
 .sheet { position: relative; width: 100%; max-width: 520px; margin: 0 auto; max-height: 92dvh; overflow-y: auto; background: var(--surface); border-radius: 24px 24px 0 0; padding: 16px 18px calc(20px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px; animation: rise .2s ease-out; }
 @keyframes rise { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+.sheet > * { flex-shrink: 0; }
+.sheet.still { animation: none; }
 @media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
 .sheet-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
 .sheet-head h2 { font-size: 19px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
@@ -242,6 +247,7 @@ svg { flex: none; }
 .row-btns > * { flex: 1; }
 .field { display: flex; flex-direction: column; gap: 5px; }
 .field > span { font-size: 12px; font-weight: 700; color: var(--muted); }
+.field-hint { margin: -6px 0 0; font-size: 12px; color: var(--muted); }
 .field input[type="text"], .field input:not([type]) { height: 48px; border: 1.5px solid var(--line); border-radius: 12px; padding: 0 14px; font-size: 16px; background: var(--bg); width: 100%; }
 .field input.big { font-size: 20px; font-weight: 800; }
 .field input:focus { outline: none; border-color: var(--accent); }
@@ -269,9 +275,12 @@ svg { flex: none; }
 .list { display: flex; flex-direction: column; background: var(--surface-2); border-radius: 16px; padding: 2px 6px; }
 .list-row { min-height: 52px; display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-bottom: 1px solid var(--line); width: 100%; text-align: left; }
 .list-row:last-child { border-bottom: 0; }
-.list-row .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.list-row .grow b { font-size: 15px; font-weight: 700; }
-.list-row .grow small { font-size: 12px; color: var(--muted); }
+.list-row .grow, .cat-row .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.list-row .grow b, .cat-row .grow b { font-size: 15px; font-weight: 700; overflow-wrap: anywhere; }
+.list-row .grow small, .cat-row .grow small { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.cat-row { display: flex; align-items: center; gap: 0; border-bottom: 1px solid var(--line); }
+.cat-row-main { flex: 1; min-width: 0; min-height: 56px; display: flex; align-items: center; gap: 10px; padding: 6px 8px; text-align: left; }
+.cat-row .icon-btn { color: var(--muted); }
 .section-title { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; padding: 4px 4px 0; }
 .limits-list { display: flex; flex-direction: column; gap: 10px; }
 .limit-line { display: flex; align-items: center; gap: 10px; }

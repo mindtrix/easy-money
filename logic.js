@@ -346,6 +346,43 @@
     return { catId: best.id, amount: amount };
   }
 
+  /* ---------- категории ---------- */
+
+  function normName(s) {
+    return norm(s).trim().replace(/\s+/g, ' ');
+  }
+
+  // есть ли уже категория с таким названием (без учёта регистра и «ё»), кроме exceptId
+  function categoryNameTaken(categories, name, exceptId) {
+    var n = normName(name);
+    return categories.some(function (c) { return c.id !== exceptId && normName(c.name) === n; });
+  }
+
+  // сдвигает категорию на одну позицию: dir = -1 вверх, 1 вниз. Порядок в массиве = порядок на экране
+  function moveCategory(state, id, dir) {
+    var cats = state.categories, i = -1, k;
+    for (k = 0; k < cats.length; k++) if (cats[k].id === id) i = k;
+    var j = i + dir;
+    if (i < 0 || j < 0 || j >= cats.length) return false;
+    var tmp = cats[i]; cats[i] = cats[j]; cats[j] = tmp;
+    return true;
+  }
+
+  // удаляет категорию вместе с её лимитами. Траты текущего периода переносит в moveTo.
+  // Если траты есть, а moveTo не задана или не существует — ничего не делает и возвращает null.
+  // Архив не трогается: у закрытых периодов свой снимок категорий.
+  function removeCategory(state, id, moveTo) {
+    var ops = state.current ? state.current.ops : [];
+    var used = ops.filter(function (o) { return o.cat === id; });
+    var target = moveTo && moveTo !== id && state.categories.some(function (c) { return c.id === moveTo; });
+    if (used.length && !target) return null;
+    used.forEach(function (o) { o.cat = moveTo; });
+    if (state.current) delete state.current.limits[id];
+    ['salary', 'advance'].forEach(function (t) { if (state.templates[t]) delete state.templates[t].limits[id]; });
+    state.categories = state.categories.filter(function (c) { return c.id !== id; });
+    return used.length;
+  }
+
   var api = {
     MONTHS_GEN: MONTHS_GEN, MONTHS_SHORT: MONTHS_SHORT, MONTHS_NOM: MONTHS_NOM, PALETTE: PALETTE,
     SCHEMA_VERSION: SCHEMA_VERSION,
@@ -355,7 +392,8 @@
     typeName: typeName, periodLabel: periodLabel, daysLeft: daysLeft,
     seedState: seedState, migrate: migrate, looksLikeBackup: looksLikeBackup, emptyTemplate: emptyTemplate,
     newInstance: newInstance, carryFrom: carryFrom, rollPeriods: rollPeriods,
-    totals: totals, parsePhrase: parsePhrase, lev: lev
+    totals: totals, parsePhrase: parsePhrase, lev: lev,
+    categoryNameTaken: categoryNameTaken, moveCategory: moveCategory, removeCategory: removeCategory
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

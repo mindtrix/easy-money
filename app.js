@@ -3,7 +3,7 @@
   'use strict';
 
   var L = window.BudgetLogic;
-  var APP_VERSION = '1.0.0';
+  var APP_VERSION = '1.1.0';
   var KEY = 'budget.v1';
   var KEY_PREV = 'budget.v1.prev';
   var KEY_EXPORT = 'budget.lastExport';
@@ -17,6 +17,9 @@
     back: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>',
     pencil: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/></svg>',
     plus: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>',
+    edit: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/></svg>',
+    up: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>',
+    down: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>',
     check: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
     archive: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9"/><path d="M10 13h4"/></svg>'
   };
@@ -125,10 +128,9 @@
         '<button type="button" class="text-btn" data-act="tab" data-tab="period">Заполнить период' + ICON.chev + '</button></div>';
     }
 
-    h += '<div class="list-head"><span>Категории</span><span>Осталось</span></div>';
-    if (!state.categories.length) {
-      h += '<div class="hint-card">Категорий пока нет.<button type="button" class="text-btn" data-act="cat" data-id="">Добавить категорию' + ICON.chev + '</button></div>';
-    }
+    h += '<div class="list-head"><span class="lh-left">Категории' +
+      '<button type="button" class="lh-btn" data-act="cats">' + ICON.pencil + 'Изменить</button></span>' +
+      (state.categories.length ? '<span>Осталось</span>' : '') + '</div>';
     state.categories.forEach(function (cat) {
       var lim = c.limits[cat.id] || 0;
       var sp = t.spentBy[cat.id] || 0;
@@ -145,6 +147,7 @@
         '<button type="button" class="limit-btn" data-act="limit" data-id="' + esc(cat.id) + '" aria-label="Лимит: ' + esc(cat.name) + '">' + ICON.pencil + 'Лимит</button>' +
         '</div>';
     });
+    h += '<button type="button" class="add-cat" data-act="cat" data-id="">' + ICON.plus + 'Новая категория</button>';
     h += '</div>';
 
     var ops = c.ops.slice().sort(function (a, b) { return b.ts - a.ts; });
@@ -299,11 +302,13 @@
     return '<label class="checkline"><input type="checkbox" data-field="' + field + '"' + (ui.form[field] ? ' checked' : '') + '><span>' + label + '</span></label>';
   }
 
+  // opts.back — действие кнопки «Назад», opts.backId — её data-id, opts.extra — доп. кнопки перед «Закрыть»
   function head(title, sub, opts) {
     opts = opts || {};
     return '<div class="sheet-head">' +
-      (opts.back ? '<button type="button" class="icon-btn soft" data-act="' + opts.back + '" aria-label="Назад">' + ICON.back + '</button>' : '') +
+      (opts.back ? '<button type="button" class="icon-btn soft" data-act="' + opts.back + '"' + (opts.backId ? ' data-id="' + esc(opts.backId) + '"' : '') + ' aria-label="Назад">' + ICON.back + '</button>' : '') +
       '<div style="flex:1;min-width:0"><h2 id="sheet-title">' + title + '</h2>' + (sub ? '<p>' + sub + '</p>' : '') + '</div>' +
+      (opts.extra || '') +
       '<button type="button" class="icon-btn soft" data-act="close-sheet" aria-label="Закрыть">' + ICON.close + '</button></div>';
   }
 
@@ -314,7 +319,8 @@
       var lim = c.limits[cat.id] || 0;
       var sp = L.totals(c, state.categories).spentBy[cat.id] || 0;
       var sub = lim ? (lim - sp >= 0 ? 'осталось ' + M(lim - sp) : 'уже сверх лимита на ' + M(sp - lim)) : 'лимит не задан';
-      return head(dot(cat.color) + esc(cat.name), sub) +
+      var editBtn = '<button type="button" class="icon-btn soft" data-act="cat" data-id="' + esc(cat.id) + '" data-from="spend" aria-label="Изменить категорию ' + esc(cat.name) + '">' + ICON.edit + '</button>';
+      return head(dot(cat.color) + esc(cat.name), sub, { extra: editBtn }) +
         '<div id="amt" class="amount-display' + (ui.form.amount ? '' : ' zero') + '">' + displayAmount(ui.form.amount) + '</div>' +
         keypadHtml() +
         '<button type="button" class="primary" data-act="spend-save" data-needs-amount' + (L.parseMoney(ui.form.amount) ? '' : ' disabled') + '>Записать трату</button>';
@@ -376,7 +382,7 @@
           '<input id="lim-' + esc(cat.id) + '" type="text" inputmode="decimal" data-field="lim_' + esc(cat.id) + '" value="' + esc(ui.form['lim_' + cat.id] || '') + '" placeholder="0" autocomplete="off"></div>';
       }).join('');
       return head('Лимиты текучки', isPlan ? 'план периода ' + L.periodLabel(planPeriod()) : 'на период ' + L.periodLabel(c)) +
-        (state.categories.length ? '<div class="limits-list">' + rows + '</div>' : '<div class="note-box">Сначала добавь категории в настройках.</div>') +
+        (state.categories.length ? '<div class="limits-list">' + rows + '</div>' : '<div class="note-box">Категорий пока нет. Добавь их на экране «Текучка»: кнопка «Новая категория» под списком.</div>') +
         (isPlan ? '' : checkline('applyPlan', 'Сохранить и в плане периодов ' + typeQ(c.type))) +
         '<button type="button" class="primary" data-act="limits-save">Сохранить</button>';
     },
@@ -409,16 +415,13 @@
 
     settings: function () {
       var last = getLastExport();
-      var cats = state.categories.map(function (cat) {
-        return '<button type="button" class="list-row" data-act="cat" data-id="' + esc(cat.id) + '">' + dot(cat.color) +
-          '<span class="grow"><b>' + esc(cat.name) + '</b><small>' + (cat.aliases ? 'голосом: ' + esc(cat.aliases) : 'слова для голоса не заданы') + '</small></span>' + ICON.chev + '</button>';
-      }).join('');
+      var n = state.categories.length;
       var canShare = false;
       try { canShare = !!(navigator.canShare && window.File && navigator.canShare({ files: [new File(['{}'], 'x.json', { type: 'application/json' })] })); } catch (e) { canShare = false; }
       return head('Настройки') +
-        '<div class="section-title">Категории текучки</div>' +
-        '<div class="list">' + cats +
-        '<button type="button" class="list-row" data-act="cat" data-id="">' + ICON.plus + '<span class="grow"><b>Добавить категорию</b></span></button></div>' +
+        '<div class="section-title">Текучка</div>' +
+        '<div class="list"><button type="button" class="list-row" data-act="cats"><span class="grow"><b>Категории</b>' +
+        '<small>' + (n ? pl(n, 'категория', 'категории', 'категорий') + ': названия, цвета, лимиты, порядок' : 'пока нет ни одной') + '</small></span>' + ICON.chev + '</button></div>' +
         '<div class="section-title">Данные</div>' +
         '<div class="note-box">Все данные хранятся только на этом телефоне, в браузере. Раз в пару недель сохраняй копию: при очистке данных Chrome они пропадут.<br><br>' +
         'Последняя копия: <b>' + (last ? new Date(last).toLocaleDateString('ru-RU') : 'ещё не было') + '</b><br>' +
@@ -431,21 +434,54 @@
         '<button type="button" class="danger" data-act="reset">Удалить все данные</button>';
     },
 
+    cats: function () {
+      var c = cur(), n = state.categories.length;
+      var rows = state.categories.map(function (cat, i) {
+        var lim = c.limits[cat.id] || 0;
+        var sub = (lim ? 'лимит ' + M(lim) : 'без лимита') + (cat.aliases ? ' · голосом: ' + esc(cat.aliases) : '');
+        return '<div class="cat-row">' +
+          '<button type="button" class="cat-row-main" data-act="cat" data-id="' + esc(cat.id) + '" data-from="cats">' + dot(cat.color) +
+          '<span class="grow"><b>' + esc(cat.name) + '</b><small>' + sub + '</small></span></button>' +
+          '<button type="button" class="icon-btn" data-act="cat-move" data-id="' + esc(cat.id) + '" data-dir="-1" aria-label="Поднять: ' + esc(cat.name) + '"' + (i === 0 ? ' disabled' : '') + '>' + ICON.up + '</button>' +
+          '<button type="button" class="icon-btn" data-act="cat-move" data-id="' + esc(cat.id) + '" data-dir="1" aria-label="Опустить: ' + esc(cat.name) + '"' + (i === n - 1 ? ' disabled' : '') + '>' + ICON.down + '</button>' +
+          '</div>';
+      }).join('');
+      return head('Категории текучки', 'Нажми на категорию, чтобы изменить. Стрелки меняют порядок на главном экране') +
+        '<div class="list">' + rows +
+        '<button type="button" class="list-row" data-act="cat" data-id="" data-from="cats">' + ICON.plus + '<span class="grow"><b>Новая категория</b></span></button></div>';
+    },
+
     cat: function (sh) {
+      var c = cur();
       var isNew = !sh.id;
-      var used = !isNew && cur().ops.some(function (o) { return o.cat === sh.id; });
+      var cat = isNew ? null : catById(sh.id);
+      if (!isNew && !cat) return head('Категория удалена');
+      var used = isNew ? 0 : c.ops.filter(function (o) { return o.cat === sh.id; }).length;
+      var others = isNew ? [] : state.categories.filter(function (x) { return x.id !== sh.id; });
+      var back = sh.from === 'cats' ? { back: 'cats' } : sh.from === 'spend' ? { back: 'spend', backId: sh.id } : {};
       var sw = L.PALETTE.map(function (col) {
         var on = ui.form.color === col;
         return '<button type="button" class="swatch" style="--c:' + col + '" aria-pressed="' + on + '" aria-label="Цвет ' + col + '" data-act="cat-color" data-c="' + col + '">' + (on ? ICON.check : '') + '</button>';
       }).join('');
-      return head(isNew ? 'Новая категория' : 'Категория', '', { back: 'settings' }) +
-        '<label class="field"><span>Название</span><input type="text" data-field="name" value="' + esc(ui.form.name) + '" placeholder="Например, Еда в городе" autocomplete="off"></label>' +
-        '<label class="field"><span>Слова для голоса, через запятую</span><input type="text" data-field="aliases" value="' + esc(ui.form.aliases) + '" placeholder="кафе, обед, столовая" autocomplete="off"></label>' +
+      var h = head(isNew ? 'Новая категория' : dot(ui.form.color) + esc(cat.name), isNew ? 'появится на экране «Текучка»' : '', back) +
+        '<label class="field"><span>Название</span><input type="text" data-field="name" value="' + esc(ui.form.name) + '" placeholder="Например, Такси" autocomplete="off" maxlength="40"></label>' +
+        '<label class="field"><span>Лимит на период ' + L.periodLabel(c) + '</span><input type="text" inputmode="decimal" data-field="limit" value="' + esc(ui.form.limit) + '" placeholder="без лимита" autocomplete="off"></label>' +
+        checkline('applyPlan', 'Такой же лимит в плане периодов ' + typeQ(c.type)) +
+        '<label class="field"><span>Другие слова для голоса</span><input type="text" data-field="aliases" value="' + esc(ui.form.aliases) + '" placeholder="через запятую: кафе, обед" autocomplete="off"></label>' +
+        '<p class="field-hint">Название голос узнаёт и так. Сюда — другие слова, которыми ты называешь эту категорию.</p>' +
         '<div class="field"><span>Цвет</span><div class="swatches">' + sw + '</div></div>' +
-        '<button type="button" class="primary" data-act="cat-save">Сохранить</button>' +
-        (isNew ? '' : (used
-          ? '<div class="note-box">Удалить нельзя: в текущем периоде есть траты в этой категории. Перенеси их в другую категорию через ленту операций.</div>'
-          : '<button type="button" class="danger" data-act="cat-delete">Удалить категорию</button>'));
+        '<button type="button" class="primary" data-act="cat-save">' + (isNew ? 'Добавить категорию' : 'Сохранить') + '</button>';
+      if (isNew) return h;
+      if (!used) return h + '<button type="button" class="danger" data-act="cat-delete">Удалить категорию</button>';
+      if (!others.length) return h + '<div class="note-box">Удалить нельзя: в ней есть траты, а другой категории, куда их перенести, нет.</div>';
+      var chips = others.map(function (x) {
+        var on = ui.form.moveTo === x.id;
+        return '<button type="button" class="chip" style="--c:' + esc(x.color) + '" aria-pressed="' + on + '" data-act="cat-move-to" data-id="' + esc(x.id) + '">' + dot(x.color, true) + esc(x.name) + '</button>';
+      }).join('');
+      return h + '<div class="section-title">Удаление</div>' +
+        '<div class="note-box">В этом периоде здесь ' + pl(used, 'трата', 'траты', 'трат') + '. Чтобы удалить категорию, выбери, куда их перенести.</div>' +
+        '<div class="chips">' + chips + '</div>' +
+        '<button type="button" class="danger" data-act="cat-delete">Перенести траты и удалить</button>';
     },
 
     archive: function () {
@@ -509,10 +545,16 @@
   function renderSheet() {
     var root = document.getElementById('sheet-root');
     updateBodyFlags();
-    if (!ui.sheet) { root.innerHTML = ''; return; }
+    if (!ui.sheet) { root.innerHTML = ''; root.removeAttribute('data-key'); return; }
     var builder = SHEETS[ui.sheet.type];
+    // лист уже открыт: перерисовываем без анимации появления, а тот же лист — ещё и с прежней прокруткой
+    var prev = root.querySelector('.sheet');
+    var key = ui.sheet.type + ':' + (ui.sheet.id || ui.sheet.catId || ui.sheet.i || '');
+    var keepScroll = prev && root.getAttribute('data-key') === key ? prev.scrollTop : 0;
     root.innerHTML = '<div class="sheet-wrap"><div class="sheet-scrim" data-act="close-sheet"></div>' +
-      '<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">' + builder(ui.sheet) + '</div></div>';
+      '<div class="sheet' + (prev ? ' still' : '') + '" role="dialog" aria-modal="true" aria-labelledby="sheet-title">' + builder(ui.sheet) + '</div></div>';
+    root.setAttribute('data-key', key);
+    if (keepScroll) root.querySelector('.sheet').scrollTop = keepScroll;
   }
 
   function openSheet(type, data, form) {
@@ -931,36 +973,68 @@
     archive: function () { openSheet('archive'); },
     arch: function (el) { openSheet('arch', { i: +el.dataset.i }); },
 
+    cats: function () { openSheet('cats'); },
     cat: function (el) {
-      var id = el.dataset.id;
+      var id = el.dataset.id || null;
       var cat = id ? catById(id) : null;
+      if (id && !cat) return;
       var usedColors = state.categories.map(function (c) { return c.color; });
-      var free = L.PALETTE.filter(function (c) { return usedColors.indexOf(c) < 0; })[0] || L.PALETTE[0];
-      openSheet('cat', { id: id || null }, cat ? { name: cat.name, aliases: cat.aliases || '', color: cat.color } : { name: '', aliases: '', color: free });
+      var free = L.PALETTE.filter(function (c) { return usedColors.indexOf(c) < 0; })[0] || L.PALETTE[state.categories.length % L.PALETTE.length];
+      openSheet('cat', { id: id, from: el.dataset.from || null }, cat
+        ? { name: cat.name, aliases: cat.aliases || '', color: cat.color, limit: L.moneyToInput(cur().limits[id] || 0), applyPlan: false, moveTo: '' }
+        : { name: '', aliases: '', color: free, limit: '', applyPlan: true, moveTo: '' });
     },
     'cat-color': function (el) { ui.form.color = el.dataset.c; renderSheet(); },
+    'cat-move': function (el) {
+      if (!L.moveCategory(state, el.dataset.id, +el.dataset.dir)) return;
+      save(); render(); renderSheet();
+      var b = document.querySelector('[data-act="cat-move"][data-id="' + el.dataset.id + '"][data-dir="' + el.dataset.dir + '"]');
+      if (b && !b.disabled) b.focus();
+    },
+    'cat-move-to': function (el) { ui.form.moveTo = el.dataset.id; renderSheet(); },
     'cat-save': function () {
-      var name = (ui.form.name || '').trim();
+      var sh = ui.sheet, f = ui.form, c = cur();
+      var name = (f.name || '').trim().replace(/\s+/g, ' ');
       if (!name) { toast('Впиши название категории'); return; }
-      if (ui.sheet.id) {
-        var cat = catById(ui.sheet.id);
-        if (cat) { cat.name = name; cat.aliases = (ui.form.aliases || '').trim(); cat.color = ui.form.color; }
+      if (L.categoryNameTaken(state.categories, name, sh.id)) { toast('Категория «' + name + '» уже есть'); return; }
+      var limRaw = String(f.limit || '').trim();
+      var lim = L.parseMoney(limRaw);
+      if (limRaw && lim === null) { toast('Лимит введён с ошибкой. Пример: 5000 или 1250,50'); return; }
+      var id = sh.id;
+      if (id) {
+        var cat = catById(id);
+        if (!cat) { closeSheet(); return; }
+        cat.name = name; cat.aliases = (f.aliases || '').trim(); cat.color = f.color;
       } else {
-        state.categories.push({ id: L.uid(), name: name, aliases: (ui.form.aliases || '').trim(), color: ui.form.color });
+        id = L.uid();
+        state.categories.push({ id: id, name: name, aliases: (f.aliases || '').trim(), color: f.color });
+      }
+      if (lim) c.limits[id] = lim; else delete c.limits[id];
+      if (f.applyPlan) {
+        var tl = state.templates[c.type].limits;
+        if (lim) tl[id] = lim; else delete tl[id];
       }
       save(); render();
-      openSheet('settings');
+      if (sh.from === 'cats') openSheet('cats');
+      else if (sh.from === 'spend') openSheet('spend', { catId: id }, { amount: '' });
+      else closeSheet();
+      toast(sh.id ? 'Категория сохранена' : 'Категория «' + name + '» добавлена');
     },
     'cat-delete': function () {
-      var id = ui.sheet.id;
-      if (cur().ops.some(function (o) { return o.cat === id; })) return;
-      if (!window.confirm('Удалить категорию? Её лимиты тоже удалятся.')) return;
-      state.categories = state.categories.filter(function (c) { return c.id !== id; });
-      delete cur().limits[id];
-      delete state.templates.salary.limits[id];
-      delete state.templates.advance.limits[id];
+      var sh = ui.sheet, id = sh.id;
+      var cat = catById(id);
+      if (!cat) { closeSheet(); return; }
+      var used = cur().ops.filter(function (o) { return o.cat === id; }).length;
+      var target = used ? catById(ui.form.moveTo) : null;
+      if (used && !target) { toast('Выбери категорию, куда перенести траты'); return; }
+      var msg = used
+        ? 'Удалить «' + cat.name + '»? ' + pl(used, 'трата перейдёт', 'траты перейдут', 'трат перейдут') + ' в «' + target.name + '», лимиты категории удалятся.'
+        : 'Удалить категорию «' + cat.name + '»? Её лимиты тоже удалятся.';
+      if (!window.confirm(msg)) return;
+      if (L.removeCategory(state, id, target ? target.id : null) === null) { toast('Не получилось удалить категорию'); return; }
       save(); render();
-      openSheet('settings');
+      if (sh.from === 'cats') openSheet('cats'); else closeSheet();
+      toast('Категория «' + cat.name + '» удалена');
     },
 
     export: function () { doExport(); },
